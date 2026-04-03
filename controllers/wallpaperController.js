@@ -10,6 +10,7 @@ exports.uploadWallpaper = async (req, res) => {
     const newWallpaper = new Wallpaper({
       url: req.file.path,
       publicId: req.file.filename,
+      uploadedBy: req.user.id,
     });
 
     await newWallpaper.save();

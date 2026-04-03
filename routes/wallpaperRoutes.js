@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const wallpaperController = require('../controllers/wallpaperController');
 const { upload } = require('../config/cloudinary');
+const auth = require('../middleware/auth');
 
-// L'upload nécessite le middleware Cloudinary (le champ s'appelle 'image' venant du front)
-router.post('/upload', upload.single('image'), wallpaperController.uploadWallpaper);
+// L'upload nécessite d'être connecté ET le middleware Cloudinary
+router.post('/upload', auth, upload.single('image'), wallpaperController.uploadWallpaper);
 
 // Battle et Vote
 router.get('/battle', wallpaperController.getRandomWallpapers);

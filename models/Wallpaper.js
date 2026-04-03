@@ -9,6 +9,11 @@ const wallpaperSchema = new mongoose.Schema({
     type: String,
     required: true, // Utile pour supprimer l'image de Cloudinary si besoin
   },
+  uploadedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true, // Désormais, l'upload requiert un utilisateur
+  },
   eloScore: {
     type: Number,
     default: 1200, // Score de base par défaut pour le système Elo
