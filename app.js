@@ -33,7 +33,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/wallora')
       console.error('Erreur lors de la création de l\'admin:', err);
     }
   })
-  .catch(err => console.log(err));
+  .catch(err => console.error('Erreur connexion MongoDB:', err.message));
 
 // Routes
 const wallpaperRoutes = require('./routes/wallpaperRoutes');
@@ -46,6 +46,21 @@ app.use('/api/users', userRoutes);
 
 app.get('/', (req, res) => {
   res.send('API Wallora 🚀');
+});
+
+// Global error handler — catches multer Request aborted + autres erreurs Express
+app.use((err, req, res, next) => {
+  // Multer / stream abort (client disconnected before upload finished)
+  if (err.code === 'ECONNRESET' || err.message === 'Request aborted') {
+    console.warn('Upload annulé par le client (connexion coupée)');
+    return res.status(499).json({ error: 'Upload annulé. Réessayez.' });
+  }
+  // Multer file type error
+  if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+    return res.status(400).json({ error: 'Champ de fichier inattendu. Utilisez le champ "image".' });
+  }
+  console.error('Erreur serveur:', err.message);
+  res.status(err.status || 500).json({ error: err.message || 'Erreur serveur interne.' });
 });
 
 const PORT = process.env.PORT || 3000;

@@ -4,7 +4,7 @@ const Wallpaper = require('../models/Wallpaper');
 exports.uploadWallpaper = async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'Acune image fournie.' });
+      return res.status(400).json({ error: 'Aucune image fournie.' });
     }
 
     const newWallpaper = new Wallpaper({
@@ -16,6 +16,9 @@ exports.uploadWallpaper = async (req, res) => {
     await newWallpaper.save();
     res.status(201).json(newWallpaper);
   } catch (err) {
+    // If the request was aborted midway, don't try to send a second response
+    if (res.headersSent) return;
+    console.error('Erreur upload:', err.message);
     res.status(500).json({ error: 'Erreur lors de l\'upload : ' + err.message });
   }
 };
