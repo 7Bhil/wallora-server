@@ -54,15 +54,37 @@ exports.login = async (req, res) => {
 
 exports.googleLogin = async (req, res) => {
   const { idToken } = req.body;
-  if (!idToken) return res.status(400).json({ error: 'ID Token manquant.' });
+  if (!idToken) return res.status(400).json({ error: 'Token manquant.' });
 
   try {
-    const ticket = await client.verifyIdToken({
-      idToken,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
-    const payload = ticket.getPayload();
-    const { sub: googleId, email, name, picture } = payload;
+    let googleId, email, name, picture;
+
+    if (idToken.startsWith('ya29.')) {
+      // Cas de l'Access Token (souvent envoyé par le bouton Web personnalisé)
+      const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${idToken}` }
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error_description || 'Invalid Access Token');
+      
+      googleId = data.sub;
+      email = data.email;
+      name = data.name || data.given_name;
+      picture = data.picture;
+    } else {
+      // Cas de l'ID Token (JWT classique)
+      const ticket = await client.verifyIdToken({
+        idToken,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      const payload = ticket.getPayload();
+      googleId = payload.sub;
+      email = payload.email;
+      name = payload.name;
+      picture = payload.picture;
+    }
+
+    if (!email) return res.status(400).json({ error: 'Impossible de récupérer l\'email Google.' });
 
     let user = await User.findOne({ email });
 
