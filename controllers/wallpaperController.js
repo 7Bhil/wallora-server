@@ -1,8 +1,20 @@
 const Wallpaper = require('../models/Wallpaper');
+const User = require('../models/User');
 
 // Upload (Ajouter) un nouveau fond d'écran
 exports.uploadWallpaper = async (req, res) => {
   try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+    // Limite de 5 uploads pour les utilisateurs (non-admins)
+    if (user.role !== 'admin') {
+      const count = await Wallpaper.countDocuments({ uploadedBy: req.user.id });
+      if (count >= 5) {
+        return res.status(403).json({ error: 'Limite d\'upload atteinte (max 5 images). Devenez curateur Premium pour plus !' });
+      }
+    }
+
     if (!req.file) {
       return res.status(400).json({ error: 'Aucune image fournie.' });
     }
@@ -82,13 +94,36 @@ exports.voteWallpapers = async (req, res) => {
 // Récupérer le classement (Leaderboard)
 exports.getLeaderboard = async (req, res) => {
   try {
-    // Top 50, trié par score Elo décroissant
     const topWallpapers = await Wallpaper.find()
       .sort({ eloScore: -1 })
       .limit(50);
-      
     res.json(topWallpapers);
   } catch (err) {
     res.status(500).json({ error: 'Erreur Serveur : ' + err.message });
+  }
+};
+
+// Supprimer un wallpaper (uniquement par son propriétaire)
+exports.deleteWallpaper = async (req, res) => {
+  try {
+    const wallpaper = await Wallpaper.findById(req.params.id);
+    if (!wallpaper) return res.status(404).json({ error: 'Wallpaper introuvable.' });
+
+    // Vérification du propriétaire
+    if (wallpaper.uploadedBy.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Action non autorisée.' });
+    }
+
+    // Suppression de Cloudinary si on a le publicId
+    if (wallpaper.publicId) {
+      const { cloudinary } = require('../config/cloudinary');
+      await cloudinary.uploader.destroy(wallpaper.publicId);
+    }
+
+    await wallpaper.deleteOne();
+    res.json({ message: 'Wallpaper supprimé avec succès.' });
+  } catch (err) {
+    if (res.headersSent) return;
+    res.status(500).json({ error: 'Erreur suppression : ' + err.message });
   }
 };

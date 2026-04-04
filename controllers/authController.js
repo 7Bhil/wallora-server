@@ -1,6 +1,9 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 exports.register = async (req, res) => {
   try {
@@ -43,8 +46,48 @@ exports.login = async (req, res) => {
         { expiresIn: '30d' }
     );
     
-    res.json({ token, user: { id: user._id, username: user.username, email: user.email } });
+    res.json({ token, user: { id: user._id, username: user.username, email: user.email, avatarUrl: user.avatarUrl, role: user.role } });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur : ' + err.message });
+  }
+};
+
+exports.googleLogin = async (req, res) => {
+  const { idToken } = req.body;
+  if (!idToken) return res.status(400).json({ error: 'ID Token manquant.' });
+
+  try {
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name, picture } = payload;
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      // Nouvel utilisateur via Google
+      user = new User({
+        username: name.replace(/\s+/g, '_').toLowerCase() + Math.floor(Math.random() * 1000),
+        email,
+        googleId,
+        avatarUrl: picture,
+      });
+      await user.save();
+    } else if (!user.googleId) {
+      // Lier Google à un compte existant
+      user.googleId = googleId;
+      if (!user.avatarUrl) user.avatarUrl = picture;
+      await user.save();
+    }
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secret', { expiresIn: '30d' });
+    res.json({ 
+      token, 
+      user: { id: user._id, username: user.username, email: user.email, avatarUrl: user.avatarUrl, role: user.role } 
+    });
+  } catch (err) {
+    res.status(400).json({ error: 'Authentification Google échouée : ' + err.message });
   }
 };

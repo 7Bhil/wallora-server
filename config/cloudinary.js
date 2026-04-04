@@ -17,6 +17,21 @@ const storage = new CloudinaryStorage({
   },
 });
 
-const upload = multer({ storage: storage });
+const MAX_SIZE_MB = 10;
+
+const fileFilter = (req, file, cb) => {
+  const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  if (allowed.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Format non supporté. Utilisez JPG, PNG ou WEBP.'), false);
+  }
+};
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: MAX_SIZE_MB * 1024 * 1024 }, // 10 MB max
+  fileFilter,
+});
 
 module.exports = { cloudinary, upload };

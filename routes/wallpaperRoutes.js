@@ -4,7 +4,7 @@ const wallpaperController = require('../controllers/wallpaperController');
 const { upload } = require('../config/cloudinary');
 const auth = require('../middleware/auth');
 
-// L'upload nécessite d'être connecté ET le middleware Cloudinary
+// Upload — authentification requise
 router.post('/upload', auth, upload.single('image'), wallpaperController.uploadWallpaper);
 
 // Battle et Vote
@@ -13,5 +13,8 @@ router.post('/vote', wallpaperController.voteWallpapers);
 
 // Classement
 router.get('/leaderboard', wallpaperController.getLeaderboard);
+
+// Suppression — authentification + vérification propriétaire dans le contrôleur
+router.delete('/:id', auth, wallpaperController.deleteWallpaper);
 
 module.exports = router;

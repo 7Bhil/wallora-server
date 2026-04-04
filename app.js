@@ -50,12 +50,13 @@ app.get('/', (req, res) => {
 
 // Global error handler — catches multer Request aborted + autres erreurs Express
 app.use((err, req, res, next) => {
-  // Multer / stream abort (client disconnected before upload finished)
   if (err.code === 'ECONNRESET' || err.message === 'Request aborted') {
     console.warn('Upload annulé par le client (connexion coupée)');
     return res.status(499).json({ error: 'Upload annulé. Réessayez.' });
   }
-  // Multer file type error
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({ error: 'Fichier trop lourd. Maximum autorisé : 10 Mo.' });
+  }
   if (err.code === 'LIMIT_UNEXPECTED_FILE') {
     return res.status(400).json({ error: 'Champ de fichier inattendu. Utilisez le champ "image".' });
   }
