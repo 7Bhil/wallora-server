@@ -48,6 +48,11 @@ app.get('/', (req, res) => {
   res.send('API Wallora 🚀');
 });
 
+// Route Status pour Alive Monitoring
+app.get('/api/status', (req, res) => {
+  res.json({ status: 'online', timestamp: new Date() });
+});
+
 // Global error handler — catches multer Request aborted + autres erreurs Express
 app.use((err, req, res, next) => {
   if (err.code === 'ECONNRESET' || err.message === 'Request aborted') {
